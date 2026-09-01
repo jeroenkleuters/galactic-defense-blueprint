@@ -139,16 +139,16 @@ export function centreOf(cx: number, cy: number): Vec {
 export function bakeFlowField(grid: CellKind[][], core: { cx: number; cy: number }) {
   const walkable = (x: number, y: number) => {
     if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return false;
-    const k = grid[y][x];
+    const k = grid[y]![x]!;
     return k === "PATH" || k === "SPAWN" || k === "CORE";
   };
   const dist: number[][] = Array.from({ length: ROWS }, () => Array(COLS).fill(Infinity));
   const flow: (Vec | null)[][] = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
   const queue: { cx: number; cy: number }[] = [core];
-  dist[core.cy][core.cx] = 0;
+  dist[core.cy]![core.cx] = 0;
   while (queue.length) {
     const cur = queue.shift()!;
-    const d = dist[cur.cy][cur.cx];
+    const d = dist[cur.cy]![cur.cx]!;
     const neighbours = [
       { cx: cur.cx + 1, cy: cur.cy },
       { cx: cur.cx - 1, cy: cur.cy },
@@ -157,9 +157,9 @@ export function bakeFlowField(grid: CellKind[][], core: { cx: number; cy: number
     ];
     for (const n of neighbours) {
       if (!walkable(n.cx, n.cy)) continue;
-      if (dist[n.cy][n.cx] <= d + 1) continue;
-      dist[n.cy][n.cx] = d + 1;
-      flow[n.cy][n.cx] = centreOf(cur.cx, cur.cy);
+      if (dist[n.cy]![n.cx]! <= d + 1) continue;
+      dist[n.cy]![n.cx] = d + 1;
+      flow[n.cy]![n.cx] = centreOf(cur.cx, cur.cy);
       queue.push(n);
     }
   }
@@ -204,7 +204,7 @@ export function towerAt(s: GameState, cx: number, cy: number) {
 
 export function canPlace(s: GameState, cx: number, cy: number, kind: TowerId) {
   if (cx < 0 || cy < 0 || cx >= COLS || cy >= ROWS) return false;
-  if (s.grid[cy][cx] !== "BUILDABLE") return false;
+  if (s.grid[cy]![cx] !== "BUILDABLE") return false;
   if (towerAt(s, cx, cy)) return false;
   return s.credits >= TOWERS[kind].tiers[0].cost;
 }
@@ -231,7 +231,7 @@ export function placeTower(s: GameState, cx: number, cy: number, kind: TowerId) 
 
 export function upgradeCost(t: Tower) {
   if (t.tier >= 2) return null;
-  return TOWERS[t.kind].tiers[t.tier + 1].cost;
+  return TOWERS[t.kind].tiers[(t.tier + 1) as 1 | 2].cost;
 }
 
 export function upgradeTower(s: GameState, t: Tower) {
@@ -262,8 +262,9 @@ export function startWave(s: GameState) {
   }
   s.phase = "WAVE";
   s.waveClock = 0;
-  s.spawnCursor = WAVES[s.waveIndex].groups.map(() => 0);
-  pushLog(s, `Wave ${s.waveIndex + 1} — ${WAVES[s.waveIndex].name}`);
+  const w = WAVES[s.waveIndex]!;
+  s.spawnCursor = w.groups.map(() => 0);
+  pushLog(s, `Wave ${s.waveIndex + 1} — ${w.name}`);
 }
 
 function damageEnemy(s: GameState, e: Enemy, amount: number, type: keyof typeof DMG_TABLE) {
@@ -360,7 +361,7 @@ function fire(s: GameState, t: Tower, target: Enemy) {
 }
 
 function spawnEnemy(s: GameState, kind: EnemyId, laneIndex: number) {
-  const spawn = s.spawns[laneIndex % Math.max(1, s.spawns.length)] ?? s.spawns[0];
+  const spawn = (s.spawns[laneIndex % Math.max(1, s.spawns.length)] ?? s.spawns[0])!;
   const def = ENEMIES[kind];
   const hpScale = 1 + s.waveIndex * 0.06;
   s.enemies.push({
@@ -417,7 +418,7 @@ export function step(s: GameState, dt: number) {
     if (s.buildTimer <= 0) startWave(s);
   }
 
-  const wave = WAVES[s.waveIndex];
+  const wave = WAVES[s.waveIndex]!;
 
   if (s.phase === "WAVE") {
     s.waveClock += dt;
